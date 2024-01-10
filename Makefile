@@ -6,4 +6,4 @@ whcli:
 	go build
 
 clean:
-	rm y.output cmd/whcli/grammar.go go-whcli
+	rm -f y.output cmd/whcli/grammar.go go-whcli
