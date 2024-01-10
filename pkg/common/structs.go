@@ -100,9 +100,10 @@ type QueryParameters struct {
   Resolution string
   Purity string
   Kind string
-  Tag string
+  Query string
   Color string
   Order string
+  Sorting string
   Seed string
   Page int
 }

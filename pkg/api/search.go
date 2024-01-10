@@ -18,7 +18,7 @@ func Search(parms common.QueryParameters) common.SearchResponse {
   var err error
   var endPoint string
 
-  endPoint = fmt.Sprintf("%s/%s/%s/", common.API_ENDPOINT, common.API_VERSION, common.SEARCH_PATH)
+  endPoint = fmt.Sprintf("%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.SEARCH_PATH)
   v := url.Values{}
 
   // set up query parameters
@@ -29,15 +29,15 @@ func Search(parms common.QueryParameters) common.SearchResponse {
     v.Add("ai_art_filter", fmt.Sprintf("%d", 1));
   }
   v.Add("atleast", parms.Resolution)
-  v.Add("sorting", parms.Order)
+  v.Add("sorting", parms.Sorting)
   v.Add("categories", parms.Kind)
-  if parms.Tag != "" {
-    v.Add("q", parms.Tag)
+  if parms.Query != "" {
+    v.Add("q", parms.Query)
   }
   if parms.Color != "" {
     v.Add("colors", parms.Color)
   }
-  if parms.Order == "random" && parms.Seed != "" {
+  if parms.Sorting == "random" && parms.Seed != "" {
     v.Add("seed", parms.Seed);
   }
   v.Add("page", fmt.Sprintf("%d", parms.Page));
@@ -71,7 +71,7 @@ func Search(parms common.QueryParameters) common.SearchResponse {
 }
 
 func RandomWallpaper(parms common.QueryParameters) (string, error) {
-  parms.Order = "random";
+  parms.Sorting = "random";
   searchResult := Search(parms);
 
   // return first result
