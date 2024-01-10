@@ -16,7 +16,7 @@ Argument string
 }
 
 %token <Command> COMMAND
-%token <Argument> ARGUMENT
+%token <Argument> ARGTOKEN
 %type <Argument> argument
 
 %start expression
@@ -49,7 +49,7 @@ expression:
             case "info":
               CommandParameters.Id = $2
               api.DisplayWallpaperInfo(api.GetById(CommandParameters));
-            case "get":
+            case "download":
               CommandParameters.Id = $2
               CommandParameters.Path = "./"
               api.DownloadWallpaper(CommandParameters);
@@ -62,7 +62,7 @@ expression:
           }
 
 argument:
-        ARGUMENT {
+         ARGTOKEN {
           $$ = $1
         }
 %%
@@ -80,8 +80,8 @@ type token struct {
 }
 
 var tokens = []token {
-  token{ matcher: regexp.MustCompile("next|prev|info|get|tag|quit"), tokenType: COMMAND },
-  token{ matcher: regexp.MustCompile("(?i)[a-z0-9]+"), tokenType: ARGUMENT },
+  token{ matcher: regexp.MustCompile("next|prev|info|download|tag|quit"), tokenType: COMMAND },
+  token{ matcher: regexp.MustCompile("(?i)[a-z0-9]+"), tokenType: ARGTOKEN },
 }
 
 func (l *lexer) Error(e string) {

@@ -78,8 +78,9 @@ var (
       CommandParameters.Path, _ = cmd.Flags().GetString("path")
       CommandParameters.Purity, _ = cmd.Flags().GetString("purity")
       CommandParameters.Kind, _ = cmd.Flags().GetString("kind")
-      CommandParameters.Tag, _ = cmd.Flags().GetString("tag")
+      CommandParameters.Query, _ = cmd.Flags().GetString("query")
       CommandParameters.Color, _ = cmd.Flags().GetString("color")
+      CommandParameters.AiArt, _ = cmd.Flags().GetBool("aifilter");
       CommandParameters.Page = 1
 
       CommandParameters.Id, err = api.RandomWallpaper(CommandParameters);
@@ -103,9 +104,11 @@ var (
       CommandParameters.Resolution, _ = cmd.Flags().GetString("resolution")
       CommandParameters.Purity, _ = cmd.Flags().GetString("purity")
       CommandParameters.Kind, _ = cmd.Flags().GetString("kind")
-      CommandParameters.Tag, _ = cmd.Flags().GetString("tag")
+      CommandParameters.Query, _ = cmd.Flags().GetString("query")
       CommandParameters.Color, _ = cmd.Flags().GetString("color")
       CommandParameters.Order, _ = cmd.Flags().GetString("order")
+      CommandParameters.Sorting, _ = cmd.Flags().GetString("sorting")
+      CommandParameters.AiArt, _ = cmd.Flags().GetBool("aifilter");
       CommandParameters.Page = 1;
 
       // search and update params
@@ -147,16 +150,19 @@ func init() {
   rndCommand.Flags().StringP("resolution", "r", "1920x1080", "Wallpaper resolution")
   rndCommand.Flags().StringP("purity", "p", "100", "Wallpaper Purity Level (sfw,nsfw): String values made up of 3 integers: xxx where x can be 0 or 1 (sfw/sketchy/nsfw)")
   rndCommand.Flags().StringP("kind", "k", "111", "Wallpaper Kind: String value made up of 3 integers: xxx where x can be either 0 or 1 (anime/nature/people)")
-  rndCommand.Flags().StringP("tag", "t", "", "Search by wallpaper tag, eg: +anime +summer")
+  rndCommand.Flags().StringP("query", "q", "", "Specify wallpaprt search query, eg: +anime +summer")
   rndCommand.Flags().StringP("color", "c", "", "Search by wallpaper color")
+  rndCommand.Flags().BoolP("aifilter", "a", true, "Filter out AI-generated content.")
 
   // search command params
   searchCommand.Flags().StringP("resolution", "r", "1920x1080", "Wallpaper resolution")
   searchCommand.Flags().StringP("purity", "p", "100", "Wallpaper Purity Level (sfw,nsfw): String values made up of 3 integers: xxx where x can be 0 or 1 (sfw/sketchy/nsfw)")
   searchCommand.Flags().StringP("kind", "k", "111", "Wallpaper Kind: String value made up of 3 integers: xxx where x can be either 0 or 1 (anime/nature/people)")
-  searchCommand.Flags().StringP("tag", "t", "", "Search by wallpaper tag, eg: +anime +summer")
+  searchCommand.Flags().StringP("query", "q", "", "Specify wallpaprt search query, eg: +anime +summer")
   searchCommand.Flags().StringP("color", "c", "", "Search by wallpaper color")
+  searchCommand.Flags().StringP("sorting", "s", "", "Sorting Logic")
   searchCommand.Flags().StringP("order", "o", "", "Results ordering logic")
+  searchCommand.Flags().BoolP("aifilter", "a", true, "Filter out AI-generated content.")
 
   rootCommand.AddCommand(infoCommand)
   rootCommand.AddCommand(tagInfoCommand)
