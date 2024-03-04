@@ -16,6 +16,7 @@ var (
   CommandParameters common.QueryParameters
   GenericSearchResults common.SearchResponse
   vP *consoleio.Viewport;
+  cliLexer = lexer{}
 
   rootCommand = &cobra.Command{
     Use:   "whcli",
@@ -109,6 +110,7 @@ var (
       CommandParameters.Order, _ = cmd.Flags().GetString("order")
       CommandParameters.Sorting, _ = cmd.Flags().GetString("sorting")
       CommandParameters.AiArt, _ = cmd.Flags().GetBool("aifilter");
+      CommandParameters.Path = "./";
       CommandParameters.Page = 1;
 
       // search and update params
@@ -125,10 +127,25 @@ var (
 
       // start interactive loop
       var cliCmd string;
+      cliLexer.options = make(map[string]string);
+      cliLexer.options["resolution"] = CommandParameters.Resolution;
+      cliLexer.options["purity"] = CommandParameters.Purity;
+      cliLexer.options["kind"] = CommandParameters.Kind;
+      cliLexer.options["query"] = CommandParameters.Query;
+      cliLexer.options["color"] = CommandParameters.Color;
+      cliLexer.options["order"] = CommandParameters.Order;
+      cliLexer.options["sorting"] = CommandParameters.Sorting;
+      if CommandParameters.AiArt {
+        cliLexer.options["aifilter"] = "true";
+      } else {
+        cliLexer.options["aifilter"] = "false";
+      }
+      cliLexer.options["path"] = CommandParameters.Path;
       vP.SetPrompt(text.FgGreen.Sprintf("%s", "WHCLI > "));
       for ;; {
         cliCmd = vP.ReadCommand();
-        yyParse(&lexer{input: cliCmd});
+        cliLexer.input = cliCmd;
+        yyParse(&cliLexer);
       }
     },
   }

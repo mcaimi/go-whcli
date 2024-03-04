@@ -5,83 +5,89 @@ import (
         "os"
         "fmt"
         "unicode"
-        "regexp"
         "github.com/mcaimi/go-whcli/pkg/api"
+        "github.com/mcaimi/go-whcli/pkg/common"
 )
 %}
 
 %union{
 Command string
-Argument string
+Parameter string
+Value string
 }
 
-%token <Command> COMMAND
-%token <Argument> ARGTOKEN
-%type <Argument> argument
+%token <Command> SEARCHCMD INFOCMD TAGCMD PREVCMD NEXTCMD DOWNCMD ENVCMD QUITCMD
+%token <Parameter> RESPARM PURITYPARM QUERYPARM KINDPARM COLORPARM ORDERPARM SORTPARM AIPARM PATHPARM
+%token <Value> IDENTIFIER
+%token EQUALS
 
-%start expression
+%type <Parameter> variable
+%start startcommand
 
 %%
-expression:
-          |
-          COMMAND {
-            switch $1 {
-            case "next":
+startcommand: commands
+            | assignment
+
+commands:
+          QUITCMD {
+              os.Exit(0);
+          }
+          | SEARCHCMD {
+              GenericSearchResults = api.Search(CommandParameters);
+              if len(GenericSearchResults.Data) == 0 {
+                  fmt.Println("Search returned no items.")
+              }
+              CommandParameters.Seed = fmt.Sprintf("%s", GenericSearchResults.Meta.Seed);
+
+              vP.SetData(GenericSearchResults);
+              vP.Render();
+          }
+          | NEXTCMD {
               CommandParameters.Page += 1;
               GenericSearchResults = api.Search(CommandParameters);
               vP.SetData(GenericSearchResults)
               vP.Render()
-            case "prev":
+          }
+          | PREVCMD {
               CommandParameters.Page -= 1;
               if CommandParameters.Page < 1 { CommandParameters.Page = 1; }
               GenericSearchResults = api.Search(CommandParameters);
               vP.SetData(GenericSearchResults)
               vP.Render()
-            case "quit":
-              os.Exit(0);
-            default:
-              break
-            }
           }
-          |
-          COMMAND argument {
-            switch $1 {
-            case "info":
+          | INFOCMD IDENTIFIER {
               CommandParameters.Id = $2
               api.DisplayWallpaperInfo(api.GetById(CommandParameters));
-            case "download":
+          }
+          | DOWNCMD IDENTIFIER {
               CommandParameters.Id = $2
-              CommandParameters.Path = "./"
               api.DownloadWallpaper(CommandParameters);
-            case "tag":
+          }
+          | TAGCMD IDENTIFIER {
               CommandParameters.Id = $2
               api.DisplayTagInfo(api.GetTagById(CommandParameters));
-            default:
-              break;
-            }
+          }
+          | ENVCMD variable {
+              fmt.Printf("Variable { %s } is set to value [ %s ]\n", $2, yylex.(*lexer).options[$2]);
           }
 
-argument:
-         ARGTOKEN {
-          $$ = $1
+assignment:
+        variable EQUALS IDENTIFIER {
+          yylex.(*lexer).options[$1] = $3;
+          updateParameters($1, &CommandParameters, yylex.(*lexer));
         }
+
+variable:
+     RESPARM | PURITYPARM | KINDPARM | QUERYPARM | COLORPARM | ORDERPARM | SORTPARM | AIPARM | PATHPARM {
+      $$ = $1
+    }
+
 %%
 
 type lexer struct {
   input string
-  command string
-  argument string
+  options map[string]string
   parserError bool
-}
-
-type token struct {
-  matcher *regexp.Regexp
-  tokenType int
-}
-
-var tokens = []token {
-  token{ matcher: regexp.MustCompile("next|prev|info|download|tag|quit"), tokenType: COMMAND },
-  token{ matcher: regexp.MustCompile("(?i)[a-z0-9]+"), tokenType: ARGTOKEN },
 }
 
 func (l *lexer) Error(e string) {
@@ -97,28 +103,120 @@ func isEndOfInput(s string) bool {
   }
 }
 
+func updateParameters(paramName string, paramStore *common.QueryParameters, lx *lexer) {
+  var value string = lx.options[paramName];
+  switch paramName {
+  case "resolution":
+      paramStore.Resolution = value;
+      break;
+  case "purity":
+      paramStore.Purity = value;
+      break;
+  case "kind":
+      paramStore.Kind = value;
+      break;
+  case "query":
+      paramStore.Query = value;
+      break;
+  case "color":
+      paramStore.Color = value;
+      break;
+  case "order":
+      paramStore.Order = value;
+      break;
+  case "sorting":
+      paramStore.Sorting = value;
+      break;
+  case "aifilter":
+    if lx.options["aifilter"] == "true" {
+      paramStore.AiArt = true;
+    } else {
+      paramStore.AiArt = false;
+    }
+    break;
+  case "path":
+      paramStore.Path = value;
+      break;
+  default:
+    break;
+  }
+}
+
+func nextToken(s string) (string, int) {
+  var index int;
+  var temp string = s[:];
+  for index = 0; len(temp) > 0 && !(unicode.IsSpace(rune(temp[0]))); index++ { temp = temp[1:]; }
+
+  // return next token
+  return s[0:index], index;
+}
+
 func (l *lexer) Lex(lval *yySymType) int {
-  // skip spaces
+  // skip leading spaces
   for ; len(l.input) > 0 && unicode.IsSpace(rune(l.input[0])); l.input = l.input[1:] {}
 
   if isEndOfInput(l.input) { return 0; }
 
   // parse command
-  for _, tok := range tokens {
-    strmatch := tok.matcher.FindString(l.input);
-    if strmatch != "" {
-      // pass value back to yacc
-      if tok.tokenType == COMMAND {
-        lval.Command = strmatch;
-      } else {
-        lval.Argument = strmatch;
-      }
-      l.input = l.input[len(strmatch):];
-      return tok.tokenType;
-    }
+  tokenValue, tokenLen := nextToken(l.input);
+  l.input = l.input[tokenLen:];
+  switch(tokenValue) {
+  case "search":
+    lval.Command = tokenValue;
+    return SEARCHCMD;
+  case "info":
+    lval.Command = tokenValue;
+    return INFOCMD;
+  case "tag":
+    lval.Command = tokenValue;
+    return TAGCMD;
+  case "prev":
+    lval.Command = tokenValue;
+    return PREVCMD;
+  case "next":
+    lval.Command = tokenValue;
+    return NEXTCMD;
+  case "download":
+    lval.Command = tokenValue;
+    return DOWNCMD;
+  case "env":
+    lval.Command = tokenValue;
+    return ENVCMD;
+  case "quit":
+    lval.Command = tokenValue;
+    return QUITCMD;
+  case "resolution":
+    lval.Parameter = tokenValue;
+    return RESPARM;
+  case "purity":
+    lval.Parameter = tokenValue;
+    return PURITYPARM;
+  case "kind":
+    lval.Parameter = tokenValue;
+    return KINDPARM;
+  case "query":
+    lval.Parameter = tokenValue;
+    return QUERYPARM;
+  case "color":
+    lval.Parameter = tokenValue;
+    return COLORPARM;
+  case "order":
+    lval.Parameter = tokenValue;
+    return ORDERPARM;
+  case "sorting":
+    lval.Parameter = tokenValue;
+    return SORTPARM;
+  case "aifilter":
+    lval.Parameter = tokenValue;
+    return AIPARM;
+  case "path":
+    lval.Parameter = tokenValue;
+    return PATHPARM;
+  case "=":
+    return EQUALS;
+  default:
+    lval.Value = tokenValue;
+    return IDENTIFIER;
   }
-
-  // no match
-  return 0;
 }
 
