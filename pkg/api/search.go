@@ -9,7 +9,7 @@ import (
   "net/http"
   "net/url"
 
-  "github.com/mcaimi/go-whcli/pkg/common"
+  "codeberg.org/mcaimi/go-whcli/pkg/common"
 )
 
 func Search(parms common.QueryParameters) common.SearchResponse {

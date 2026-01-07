@@ -10,7 +10,7 @@ import (
 
   "github.com/jedib0t/go-pretty/v6/table"
   "github.com/jedib0t/go-pretty/v6/text"
-  "github.com/mcaimi/go-whcli/pkg/common"
+  "codeberg.org/mcaimi/go-whcli/pkg/common"
 )
 
 func GetById(parms common.QueryParameters) common.WallpaperInfoResponse {

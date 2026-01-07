@@ -8,7 +8,7 @@ import (
   "os"
   "strings"
 
-  "github.com/mcaimi/go-whcli/pkg/common"
+  "codeberg.org/mcaimi/go-whcli/pkg/common"
   "github.com/jedib0t/go-pretty/v6/text"
 )
 
