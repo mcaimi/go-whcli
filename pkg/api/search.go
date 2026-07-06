@@ -1,82 +1,79 @@
 package api
 
 import (
-  "encoding/json"
-  "errors"
-  "fmt"
-  "io"
-  "log"
-  "net/http"
-  "net/url"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"net/url"
 
-  "codeberg.org/mcaimi/go-whcli/pkg/common"
+	"codeberg.org/mcaimi/go-whcli/pkg/common"
 )
 
+func buildSearchUrl(parms common.QueryParameters) (string, error) {
+	endPoint := fmt.Sprintf("%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.SEARCH_PATH)
+	v := url.Values{}
+
+	v.Add("purity", parms.Purity)
+	if parms.AiArt {
+		v.Add("ai_art_filter", "0")
+	} else {
+		v.Add("ai_art_filter", "1")
+	}
+	v.Add("atleast", parms.Resolution)
+	v.Add("sorting", parms.Sorting)
+	v.Add("categories", parms.Kind)
+	if parms.Query != "" {
+		v.Add("q", parms.Query)
+	}
+	if parms.Color != "" {
+		v.Add("colors", parms.Color)
+	}
+	if parms.Sorting == "random" && parms.Seed != "" {
+		v.Add("seed", parms.Seed)
+	}
+	v.Add("page", fmt.Sprintf("%d", parms.Page))
+
+	finalUrl, err := url.Parse(endPoint)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse endpoint %s: %w", endPoint, err)
+	}
+	finalUrl.RawQuery = v.Encode()
+	return finalUrl.String(), nil
+}
+
 func Search(parms common.QueryParameters) common.SearchResponse {
-  var remoteResponse *http.Response
-  var responseBytes []byte
-  var err error
-  var endPoint string
+	urlStr, err := buildSearchUrl(parms)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 
-  endPoint = fmt.Sprintf("%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.SEARCH_PATH)
-  v := url.Values{}
+	resp, err := DoGet(urlStr)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	defer resp.Body.Close()
 
-  // set up query parameters
-  v.Add("purity", parms.Purity)
-  if parms.AiArt {
-    v.Add("ai_art_filter", fmt.Sprintf("%d", 0));
-  } else {
-    v.Add("ai_art_filter", fmt.Sprintf("%d", 1));
-  }
-  v.Add("atleast", parms.Resolution)
-  v.Add("sorting", parms.Sorting)
-  v.Add("categories", parms.Kind)
-  if parms.Query != "" {
-    v.Add("q", parms.Query)
-  }
-  if parms.Color != "" {
-    v.Add("colors", parms.Color)
-  }
-  if parms.Sorting == "random" && parms.Seed != "" {
-    v.Add("seed", parms.Seed);
-  }
-  v.Add("page", fmt.Sprintf("%d", parms.Page));
+	responseBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("failed to read API response: %v", err)
+	}
 
-  finalUrl, err := url.Parse(endPoint)
-  if err != nil {
-    log.Fatalf("%s -> %s\n", endPoint, err)
-  }
-  finalUrl.RawQuery = v.Encode()
+	var apiObject common.SearchResponse
+	if err = json.Unmarshal(responseBytes, &apiObject); err != nil {
+		log.Fatalf("failed to decode API response: %v", err)
+	}
 
-  // get wallpaper information and download link (by wallpaper id)
-  if remoteResponse, err = http.Get(finalUrl.String()); err != nil {
-    log.Fatalf("%s -> %s\n", endPoint, err)
-  }
-  defer remoteResponse.Body.Close()
-
-  if remoteResponse.StatusCode != 200 {
-    log.Fatalf("Status Code -> %d\n", remoteResponse.StatusCode)
-  }
-
-  // read response bytes
-  responseBytes, _ = io.ReadAll(remoteResponse.Body)
-  // decode response into struct
-  var apiObject common.SearchResponse
-  if err = json.Unmarshal(responseBytes, &apiObject); err != nil {
-    log.Fatalf("%s -> %s\n", "Error while decoding API response", err)
-  }
-
-  // return response
-  return apiObject
+	return apiObject
 }
 
 func RandomWallpaper(parms common.QueryParameters) (string, error) {
-  parms.Sorting = "random";
-  searchResult := Search(parms);
+	parms.Sorting = "random"
+	searchResult := Search(parms)
 
-  // return first result
-  if len(searchResult.Data) > 0 {
-    return searchResult.Data[0].ID, nil
-  }
-  return "", errors.New("No matching result.")
+	if len(searchResult.Data) > 0 {
+		return searchResult.Data[0].ID, nil
+	}
+	return "", errors.New("no matching result")
 }
