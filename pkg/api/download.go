@@ -32,8 +32,8 @@ func DownloadWallpaper(parms common.QueryParameters) {
   }();
 
   // download URL
-  if downloadResponse, err = http.Get(infoObject.Data.Path); err != nil {
-    log.Fatalf("Download for URL %s -> %s", infoObject.Data.Path, err);
+  if downloadResponse, err = DoGetDownload(infoObject.Data.Path); err != nil {
+    log.Fatalf("Download for URL %s -> %v", infoObject.Data.Path, err);
   }
   defer downloadResponse.Body.Close();
 

@@ -4,6 +4,7 @@ import (
   "fmt"
   "log"
   "os"
+  "time"
 
   "codeberg.org/mcaimi/go-whcli/pkg/api"
   "codeberg.org/mcaimi/go-whcli/pkg/os"
@@ -13,6 +14,11 @@ import (
 )
 
 var (
+  rootFlags = &struct {
+    ApiTimeout    string
+    DownloadTimeout string
+  }{}
+
   CommandParameters common.QueryParameters
   GenericSearchResults common.SearchResponse
   vP *consoleio.Viewport;
@@ -22,13 +28,16 @@ var (
     Use:   "whcli",
     Short: "WallHaven.cc Text/Console Client",
     Long:  "Interact with WallHaven.cc APIs: Search and Download Images.",
+    PersistentPreRun: func(cmd *cobra.Command, args []string) {
+      parseTimeouts(cmd)
+    },
   }
 
   infoCommand = &cobra.Command{
     Use:     "info",
     Short:   "Displays Info About a particular Wallpaper",
     Long:    "Queries Wallhaven.cc by Wallpaper ID and displays image information and associated Tags",
-    Aliases: []string{"i", "info", "display"},
+    Aliases: []string{"i", "display"},
     Run: func(cmd *cobra.Command, args []string) {
       CommandParameters.Id, _ = cmd.Flags().GetString("id")
 
@@ -42,7 +51,7 @@ var (
     Use:     "tag",
     Short:   "Gets Info About a particular Tag",
     Long:    "Queries Wallhaven.cc by Tag ID and displays Tag information and associated properties",
-    Aliases: []string{"t", "tag"},
+    Aliases: []string{"t"},
     Run: func(cmd *cobra.Command, args []string) {
       CommandParameters.Id, _ = cmd.Flags().GetString("id")
 
@@ -110,48 +119,72 @@ var (
       CommandParameters.Order, _ = cmd.Flags().GetString("order")
       CommandParameters.Sorting, _ = cmd.Flags().GetString("sorting")
       CommandParameters.AiArt, _ = cmd.Flags().GetBool("aifilter");
-      CommandParameters.Path = "./";
-      CommandParameters.Page = 1;
+      CommandParameters.Path = "./"
+      CommandParameters.Page = 1
 
       // search and update params
-      GenericSearchResults = api.Search(CommandParameters);
+      GenericSearchResults = api.Search(CommandParameters)
       if len(GenericSearchResults.Data) == 0 {
         fmt.Println("Search returned no items.")
       }
-      CommandParameters.Seed = fmt.Sprintf("%s", GenericSearchResults.Meta.Seed);
+      CommandParameters.Seed = fmt.Sprintf("%s", GenericSearchResults.Meta.Seed)
 
       // display data
-      vP = consoleio.NewViewPort();
-      vP.SetData(GenericSearchResults);
-      vP.Render();
+      vP = consoleio.NewViewPort()
+      vP.SetData(GenericSearchResults)
+      vP.Render()
 
       // start interactive loop
-      var cliCmd string;
-      cliLexer.options = make(map[string]string);
-      cliLexer.options["resolution"] = CommandParameters.Resolution;
-      cliLexer.options["purity"] = CommandParameters.Purity;
-      cliLexer.options["kind"] = CommandParameters.Kind;
-      cliLexer.options["query"] = CommandParameters.Query;
-      cliLexer.options["color"] = CommandParameters.Color;
-      cliLexer.options["order"] = CommandParameters.Order;
-      cliLexer.options["sorting"] = CommandParameters.Sorting;
+      var cliCmd string
+      cliLexer.options = make(map[string]string)
+      cliLexer.options["resolution"] = CommandParameters.Resolution
+      cliLexer.options["purity"] = CommandParameters.Purity
+      cliLexer.options["kind"] = CommandParameters.Kind
+      cliLexer.options["query"] = CommandParameters.Query
+      cliLexer.options["color"] = CommandParameters.Color
+      cliLexer.options["order"] = CommandParameters.Order
+      cliLexer.options["sorting"] = CommandParameters.Sorting
       if CommandParameters.AiArt {
-        cliLexer.options["aifilter"] = "true";
+        cliLexer.options["aifilter"] = "true"
       } else {
-        cliLexer.options["aifilter"] = "false";
+        cliLexer.options["aifilter"] = "false"
       }
-      cliLexer.options["path"] = CommandParameters.Path;
-      vP.SetPrompt(text.FgGreen.Sprintf("%s", "WHCLI > "));
+      cliLexer.options["path"] = CommandParameters.Path
+      vP.SetPrompt(text.FgGreen.Sprintf("%s", "WHCLI > "))
       for ;; {
-        cliCmd = vP.ReadCommand();
-        cliLexer.input = cliCmd;
-        yyParse(&cliLexer);
+        cliCmd = vP.ReadCommand()
+        cliLexer.input = cliCmd
+        yyParse(&cliLexer)
       }
     },
   }
 )
 
+func parseTimeouts(cmd *cobra.Command) {
+  if len(rootFlags.ApiTimeout) > 0 {
+    apiTimeout, err := time.ParseDuration(rootFlags.ApiTimeout)
+    if err != nil {
+      log.Fatalf("Invalid API timeout value: %s (use Go duration format, e.g. 30s, 5m)", rootFlags.ApiTimeout)
+    }
+    api.SetApiTimeout(apiTimeout)
+  }
+
+  if len(rootFlags.DownloadTimeout) > 0 {
+    dlTimeout, err := time.ParseDuration(rootFlags.DownloadTimeout)
+    if err != nil {
+      log.Fatalf("Invalid download timeout value: %s (use Go duration format, e.g. 5m, 10m)", rootFlags.DownloadTimeout)
+    }
+    api.SetDownloadTimeout(dlTimeout)
+  }
+}
+
 func init() {
+  // global flags persisted to all subcommands
+  rootFlags.ApiTimeout = "30s"
+  rootFlags.DownloadTimeout = "10m"
+  rootCommand.PersistentFlags().StringVar(&rootFlags.ApiTimeout, "timeout", "30s", "HTTP API request timeout (e.g. 30s, 5m)")
+  rootCommand.PersistentFlags().StringVar(&rootFlags.DownloadTimeout, "download-timeout", "10m", "Download operation timeout (e.g. 5m, 10m)")
+
   // info command params
   infoCommand.Flags().StringP("id", "i", "", "Wallpaper ID")
 
@@ -167,7 +200,7 @@ func init() {
   rndCommand.Flags().StringP("resolution", "r", "1920x1080", "Wallpaper resolution")
   rndCommand.Flags().StringP("purity", "p", "100", "Wallpaper Purity Level (sfw,nsfw): String values made up of 3 integers: xxx where x can be 0 or 1 (sfw/sketchy/nsfw)")
   rndCommand.Flags().StringP("kind", "k", "111", "Wallpaper Kind: String value made up of 3 integers: xxx where x can be either 0 or 1 (anime/nature/people)")
-  rndCommand.Flags().StringP("query", "q", "", "Specify wallpaprt search query, eg: +anime +summer")
+  rndCommand.Flags().StringP("query", "q", "", "Specify wallpaper search query, eg: +anime +summer")
   rndCommand.Flags().StringP("color", "c", "", "Search by wallpaper color")
   rndCommand.Flags().BoolP("aifilter", "a", true, "Filter out AI-generated content.")
 
@@ -175,7 +208,7 @@ func init() {
   searchCommand.Flags().StringP("resolution", "r", "1920x1080", "Wallpaper resolution")
   searchCommand.Flags().StringP("purity", "p", "100", "Wallpaper Purity Level (sfw,nsfw): String values made up of 3 integers: xxx where x can be 0 or 1 (sfw/sketchy/nsfw)")
   searchCommand.Flags().StringP("kind", "k", "111", "Wallpaper Kind: String value made up of 3 integers: xxx where x can be either 0 or 1 (anime/nature/people)")
-  searchCommand.Flags().StringP("query", "q", "", "Specify wallpaprt search query, eg: +anime +summer")
+  searchCommand.Flags().StringP("query", "q", "", "Specify wallpaper search query, eg: +anime +summer")
   searchCommand.Flags().StringP("color", "c", "", "Search by wallpaper color")
   searchCommand.Flags().StringP("sorting", "s", "", "Sorting Logic")
   searchCommand.Flags().StringP("order", "o", "", "Results ordering logic")
