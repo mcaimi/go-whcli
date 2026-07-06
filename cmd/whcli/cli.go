@@ -100,7 +100,7 @@ var (
     Use:     "search",
     Short:   "Generic search command",
     Long:    "Queries Wallhaven.cc APIs in the most generic way possible.",
-    Aliases: []string{"r", "rnd"},
+    Aliases: []string{"s"},
     Run: func(cmd *cobra.Command, args []string) {
       CommandParameters.Resolution, _ = cmd.Flags().GetString("resolution")
       CommandParameters.Purity, _ = cmd.Flags().GetString("purity")
