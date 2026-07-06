@@ -1,10 +1,7 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"os"
 
 	"codeberg.org/mcaimi/go-whcli/pkg/common"
@@ -12,52 +9,16 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
-func fetchById[T any](id string) T {
-	resp, err := DoGet(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.W_PATH, id))
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("failed to read API response: %v", err)
-	}
-
-	var result T
-	if err = json.Unmarshal(body, &result); err != nil {
-		log.Fatalf("failed to decode API response: %v", err)
-	}
-
-	return result
-}
-
-func fetchTagById[T any](id string) T {
-	resp, err := DoGet(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.TAG_PATH, id))
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("failed to read API response: %v", err)
-	}
-
-	var result T
-	if err = json.Unmarshal(body, &result); err != nil {
-		log.Fatalf("failed to decode API response: %v", err)
-	}
-
-	return result
-}
-
 func GetById(parms common.QueryParameters) common.WallpaperInfoResponse {
-	return fetchById[common.WallpaperInfoResponse](parms.Id)
+	var result common.WallpaperInfoResponse
+	doRequestOrFail(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.W_PATH, parms.Id), &result)
+	return result
 }
 
 func GetTagById(parms common.QueryParameters) common.TagQueryResult {
-	return fetchTagById[common.TagQueryResult](parms.Id)
+	var result common.TagQueryResult
+	doRequestOrFail(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.TAG_PATH, parms.Id), &result)
+	return result
 }
 
 func DisplayWallpaperInfo(item common.WallpaperInfoResponse) {

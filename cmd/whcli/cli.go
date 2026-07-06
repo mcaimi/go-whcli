@@ -15,8 +15,9 @@ import (
 
 var (
   rootFlags = &struct {
-    ApiTimeout    string
-    DownloadTimeout string
+    ApiTimeout        string
+    DownloadTimeout   string
+    ApiKey            string
   }{}
 
   CommandParameters common.QueryParameters
@@ -30,6 +31,9 @@ var (
     Long:  "Interact with WallHaven.cc APIs: Search and Download Images.",
     PersistentPreRun: func(cmd *cobra.Command, args []string) {
       parseTimeouts(cmd)
+      if rootFlags.ApiKey != "" {
+        api.SetApiKey(rootFlags.ApiKey)
+      }
     },
   }
 
@@ -95,7 +99,7 @@ var (
 
       CommandParameters.Id, err = api.RandomWallpaper(CommandParameters);
       if err != nil {
-        log.Fatalf(err.Error())
+        log.Fatalf("%s", err.Error())
       } else {
         api.DisplayWallpaperInfo(api.GetById(CommandParameters))
         api.DownloadWallpaper(CommandParameters)
@@ -223,7 +227,7 @@ func init() {
 
 func Execute() {
   if err := rootCommand.Execute(); err != nil {
-    fmt.Fprintf(os.Stderr, err.Error())
+    fmt.Fprintf(os.Stderr, "%s", err.Error())
     os.Exit(1)
   }
 }
