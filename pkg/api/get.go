@@ -4,21 +4,27 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mcaimi/go-whcli/pkg/common"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/mcaimi/go-whcli/pkg/common"
 )
 
-func GetById(parms common.QueryParameters) common.WallpaperInfoResponse {
+// GetById fetches wallpaper metadata from WallHaven by ID.
+func GetById(parms common.QueryParameters) (common.WallpaperInfoResponse, error) {
 	var result common.WallpaperInfoResponse
-	doRequestOrFail(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.W_PATH, parms.Id), &result)
-	return result
+	if err := doRequest(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.W_PATH, parms.Id), &result); err != nil {
+		return common.WallpaperInfoResponse{}, err
+	}
+	return result, nil
 }
 
-func GetTagById(parms common.QueryParameters) common.TagQueryResult {
+// GetTagById fetches tag metadata from WallHaven by ID.
+func GetTagById(parms common.QueryParameters) (common.TagQueryResult, error) {
 	var result common.TagQueryResult
-	doRequestOrFail(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.TAG_PATH, parms.Id), &result)
-	return result
+	if err := doRequest(fmt.Sprintf("%s/%s/%s/%s", common.API_ENDPOINT, common.API_VERSION, common.TAG_PATH, parms.Id), &result); err != nil {
+		return common.TagQueryResult{}, err
+	}
+	return result, nil
 }
 
 func DisplayWallpaperInfo(item common.WallpaperInfoResponse) {

@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -48,8 +50,8 @@ func DoGet(url string) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		resp.Body.Close()
+		return nil, httpError(resp)
 	}
 	return resp, nil
 }
@@ -61,10 +63,31 @@ func DoGetDownload(url string) (*http.Response, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		resp.Body.Close()
+		return nil, httpError(resp)
 	}
 	return resp, nil
+}
+
+// httpError builds a descriptive error for a non-200 response.
+// 404 is returned as *HTTPError so callers can rephrase it as "not found".
+func httpError(resp *http.Response) error {
+	if resp.StatusCode == http.StatusNotFound {
+		return &HTTPError{Status: http.StatusNotFound}
+	}
+	return fmt.Errorf("HTTP %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
+}
+
+// HTTPError represents a non-2xx HTTP response from the WallHaven API.
+type HTTPError struct {
+	Status int
+}
+
+func (e *HTTPError) Error() string {
+	if e.Status == http.StatusNotFound {
+		return "HTTP 404 (not found)"
+	}
+	return fmt.Sprintf("HTTP %d %s", e.Status, http.StatusText(e.Status))
 }
 
 func SetApiTimeout(timeout time.Duration) {
@@ -79,8 +102,22 @@ func SetApiKey(key string) {
 	APIKey = key
 }
 
-type errStatusCode int
+// doRequest executes DoGet, reads the body and unmarshals it into result.
+func doRequest(url string, result interface{}) error {
+	resp, err := DoGet(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-func (e errStatusCode) Error() string {
-	return fmt.Sprintf("HTTP %d", int(e))
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read API response: %w", err)
+	}
+
+	if err = json.Unmarshal(body, result); err != nil {
+		return fmt.Errorf("failed to decode API response: %w", err)
+	}
+
+	return nil
 }

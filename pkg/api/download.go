@@ -3,27 +3,35 @@ package api
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
 	"syscall"
 
-	"github.com/mcaimi/go-whcli/pkg/common"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/mcaimi/go-whcli/pkg/common"
 )
 
-func DownloadWallpaper(parms common.QueryParameters) {
+// DownloadWallpaper downloads the wallpaper identified by parms.Id into
+// parms.Path. It returns a descriptive error instead of exiting, so that
+// callers (the interactive shell) can stay alive.
+func DownloadWallpaper(parms common.QueryParameters) error {
 	var err error
 	var downloadResponse *http.Response
 	var infoObject common.WallpaperInfoResponse
 	// query wallhaven for information about the requested wp ID
-	infoObject = GetById(parms)
+	infoObject, err = GetById(parms)
+	if err != nil {
+		return fmt.Errorf("failed to fetch wallpaper %s: %w", parms.Id, err)
+	}
+	if infoObject.Data.ID == "" {
+		return fmt.Errorf("wallpaper %s not found", parms.Id)
+	}
 
 	// open a temp file
 	var tempFile *os.File
 	if tempFile, err = os.CreateTemp("", fmt.Sprintf("%s-", parms.Id)); err != nil {
-		log.Fatalf("%s", err)
+		return fmt.Errorf("failed to create temporary file: %w", err)
 	}
 	defer tempFile.Close()
 	defer func() {
@@ -34,14 +42,14 @@ func DownloadWallpaper(parms common.QueryParameters) {
 
 	// download URL
 	if downloadResponse, err = DoGetDownload(infoObject.Data.Path); err != nil {
-		log.Fatalf("Download for URL %s -> %v", infoObject.Data.Path, err)
+		return fmt.Errorf("download from %s failed: %w", infoObject.Data.Path, err)
 	}
 	defer downloadResponse.Body.Close()
 
 	// prepare destination path
 	// make directory
 	if err = os.MkdirAll(parms.Path, 0o700); err != nil {
-		log.Fatalf("%s", err)
+		return fmt.Errorf("failed to create directory %s: %w", parms.Path, err)
 	}
 	destFile := path.Join(parms.Path, path.Base(infoObject.Data.Path))
 
@@ -93,13 +101,19 @@ func DownloadWallpaper(parms common.QueryParameters) {
 	fmt.Println()
 
 	if writeFailed {
-		log.Fatalf("Error writing file to disk")
+		return fmt.Errorf("error writing %s to disk", destFile)
 	}
 
 	// move file to destination
 	if err = os.Rename(tempFile.Name(), destFile); err != nil {
-		// try to overcome the "invalid Cross-Link Device" errro (err code 18)
-		var errID syscall.Errno = err.(*os.LinkError).Err.(syscall.Errno)
+		// try to overcome the "invalid Cross-Link Device" error (err code 18)
+		lnkErr, isLinkErr := err.(*os.LinkError)
+		var errID syscall.Errno
+		if isLinkErr {
+			if errno, isErrno := lnkErr.Err.(syscall.Errno); isErrno {
+				errID = errno
+			}
+		}
 
 		// is error code 18?
 		if errID == 18 {
@@ -107,29 +121,31 @@ func DownloadWallpaper(parms common.QueryParameters) {
 			// copy instead of moving
 			srcFile, err := os.Open(tempFile.Name())
 			if err != nil {
-				log.Fatalf("Fatal Error: %s", err)
+				return fmt.Errorf("fatal error: %s", err)
 			}
 			defer srcFile.Close()
 			dstFile, err := os.Create(destFile)
 			if err != nil {
-				log.Fatalf("Fatal Error: %s", err)
+				return fmt.Errorf("fatal error: %s", err)
 			}
-			defer srcFile.Close()
+			defer dstFile.Close()
 
 			// copy data
 			bytesCopied, err := io.Copy(dstFile, srcFile)
 			if err != nil {
-				log.Fatalf("Fatal Error: %s", err)
+				return fmt.Errorf("fatal error: %s", err)
 			}
 
 			fmt.Printf("[%d] Bytes Copied, Syncing...\n", bytesCopied)
 			if err := dstFile.Sync(); err != nil {
-				log.Fatalf("Fatal Error: %s", err)
+				return fmt.Errorf("fatal error: %s", err)
 			}
 
 		} else {
-			// bail out
-			log.Fatalf("Failed to move file to %s: %s", destFile, err)
+			return fmt.Errorf("failed to move file to %s: %s", destFile, err)
 		}
 	}
+
+	fmt.Printf("whcli: saved to %s\n", destFile)
+	return nil
 }
