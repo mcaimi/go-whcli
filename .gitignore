@@ -2,3 +2,4 @@
 cmd/whcli/grammar.go
 y.output
 go-whcli
+/whcli-gui
