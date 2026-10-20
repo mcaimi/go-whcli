@@ -15,7 +15,7 @@ A Go CLI tool to interact with the [Wallhaven.cc](https://wallhaven.cc) wallpape
 go generate && go build
 
 # or install directly
-go install codeberg.org/mcaimi/go-whcli@latest
+go install github.com/mcaimi/go-whcli@latest
 ```
 
 ## Architecture
@@ -51,7 +51,7 @@ The codebase is organized into three layers:
 ### Package responsibilities
 
 | Package | Responsibility |
-|---------|---------------|
+| --------- | --------------- |
 | `main` | Single entry point, calls `whcli.Execute()` |
 | `cmd/whcli` | Cobra CLI command definitions and yacc-based interactive shell lexer/parser |
 | `pkg/api` | HTTP client, Wallhaven API request logic, download logic, response formatting |
@@ -75,7 +75,7 @@ The codebase is organized into three layers:
 │   lexer              │─────────────>│   Viewport           │
 │  - input: string     │ lexer uses   │  - Items []SearchItem│
 │  - options: map      │              │  - consoleInput      │
-│  - parserError: bool │              │  - Prompt            │
+│  - line/pos: string  │              │  - Prompt            │
 │  + Lex()             │              │  + Render()          │
 │  + Error()           │              │  + ReadCommand()     │
 └──────────────────────┘              └──────────────────────┘
@@ -221,7 +221,7 @@ whcli --timeout 1m --download-timeout 5m <command> [flags]
 Inside any search, the following commands are available:
 
 | Command | Description |
-|---------|-------------|
+| --------- | ------------- |
 | `search` | Re-run the current search with modified parameters |
 | `next` | Go to the next page of results |
 | `prev` | Go to the previous page (stays on page 1 minimum) |
@@ -229,7 +229,8 @@ Inside any search, the following commands are available:
 | `download <id>` | Download a specific wallpaper by ID |
 | `tag <id>` | Display information about a specific tag |
 | `env <param>` | Show the current value of a search parameter |
-| `<param>=<value>` | Assign a new value to a search parameter |
+| `<param>=<value>` | Assign a new value to a search parameter (`<param> = <value>` also works) |
+| `help` | Show shell usage: commands and valid parameter values |
 | `quit` | Exit the shell |
 
 Example parameter assignment and search re-execution:
@@ -238,6 +239,24 @@ Example parameter assignment and search re-execution:
 WHCLI > purity=110
 WHCLI > search
 ```
+
+Parameter values are validated against the WallHaven API rules and invalid
+values are rejected with a message (nothing is applied):
+
+| Parameter | Valid values |
+| --------- | ------------ |
+| `resolution` | `WIDTHxHEIGHT`, e.g. `1920x1080` |
+| `purity` | 3-character `0/1` string: `100` (sfw), `110` (+sketchy), `111` (+nsfw, needs API key) |
+| `kind` | 3-character `0/1` string for general/anime/people, e.g. `101` |
+| `query` | any non-empty text (spaces allowed), e.g. `+anime +summer` |
+| `color` | 6-digit hex codes and/or palette names, e.g. `red,0066cc` |
+| `sorting` | `date_added`, `relevance`, `random`, `views`, `favorites`, `toplist` |
+| `order` | `desc`, `asc` |
+| `aifilter` | `true`, `false` |
+| `path` | any non-empty path |
+
+To clear `query`, `color`, `sorting` or `order`, assign an empty value: `query =`.
+Ctrl-D (EOF) exits the shell.
 
 ## Global Flags
 
