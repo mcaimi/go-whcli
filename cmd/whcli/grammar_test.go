@@ -255,11 +255,11 @@ func TestClearValue(t *testing.T) {
 }
 
 func TestApiErrorMessage(t *testing.T) {
-	got := apiErrorMessage("wallpaper", "zzz", &api.HTTPError{Status: 404})
+	got := api.ApiErrorMessage("wallpaper", "zzz", &api.HTTPError{Status: 404})
 	if !strings.Contains(got, "not found") {
 		t.Errorf("want not-found message, got: %q", got)
 	}
-	got = apiErrorMessage("search", "", &api.HTTPError{Status: 429})
+	got = api.ApiErrorMessage("search", "", &api.HTTPError{Status: 429})
 	if !strings.Contains(got, "429") {
 		t.Errorf("want 429 message, got: %q", got)
 	}
