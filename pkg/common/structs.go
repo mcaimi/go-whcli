@@ -94,7 +94,6 @@ type SearchResponse struct {
 
 // internal data structs
 type QueryParameters struct {
-  AiArt bool
   Id string
   Path string
   Resolution string

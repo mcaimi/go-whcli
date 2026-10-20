@@ -170,7 +170,6 @@ func TestInvalidValues(t *testing.T) {
 		{"color = pink", "invalid color value(s): pink"},
 		{"sorting = newest", "invalid value newest for sorting"},
 		{"order = up", "invalid value up for order"},
-		{"aifilter = yes", "invalid value yes for aifilter"},
 	}
 	for _, c := range cases {
 		lx := newTestLexer()
@@ -225,11 +224,11 @@ func TestConsecutiveParseErrors(t *testing.T) {
 	// an error must not poison subsequent lines
 	parseLine(t, lx, "blah")
 	parseLine(t, lx, "info")
-	out, errStr := parseLine(t, lx, "aifilter = true")
+	out, errStr := parseLine(t, lx, "path = /tmp")
 	if errStr != "" {
 		t.Errorf("want no error after previous failures, got: %q", errStr)
 	}
-	if !strings.Contains(out, "aifilter is now [ true ]") {
+	if !strings.Contains(out, "path is now [ /tmp ]") {
 		t.Errorf("want confirmation, got: %q", out)
 	}
 }

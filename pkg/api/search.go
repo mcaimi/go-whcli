@@ -16,11 +16,6 @@ func buildSearchUrl(parms common.QueryParameters) (string, error) {
 	if parms.Purity != "" {
 		v.Add("purity", parms.Purity)
 	}
-	if parms.AiArt {
-		v.Add("ai_art_filter", "0")
-	} else {
-		v.Add("ai_art_filter", "1")
-	}
 	v.Add("atleast", parms.Resolution)
 	if parms.Sorting != "" {
 		v.Add("sorting", parms.Sorting)

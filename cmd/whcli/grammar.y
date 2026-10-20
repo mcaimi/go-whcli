@@ -20,7 +20,7 @@ Value string
 }
 
 %token <Command> SEARCHCMD INFOCMD TAGCMD PREVCMD NEXTCMD DOWNCMD ENVCMD QUITCMD
-%token <Parameter> RESPARM PURITYPARM KINDPARM QUERYPARM COLORPARM ORDERPARM SORTPARM AIPARM PATHPARM
+%token <Parameter> RESPARM PURITYPARM KINDPARM QUERYPARM COLORPARM ORDERPARM SORTPARM PATHPARM
 %token <Value> IDENTIFIER
 %token EQUALS
 %token HELPCMD
@@ -98,7 +98,7 @@ assignment:
         }
 
 variable:
-     RESPARM | PURITYPARM | KINDPARM | QUERYPARM | COLORPARM | ORDERPARM | SORTPARM | AIPARM | PATHPARM {
+     RESPARM | PURITYPARM | KINDPARM | QUERYPARM | COLORPARM | ORDERPARM | SORTPARM | PATHPARM {
       $$ = $1
     }
 
@@ -316,9 +316,6 @@ func (l *lexer) Lex(lval *yySymType) int {
   case "sorting":
     lval.Parameter = tokenValue
     return SORTPARM
-  case "aifilter":
-    lval.Parameter = tokenValue
-    return AIPARM
   case "path":
     lval.Parameter = tokenValue
     return PATHPARM
@@ -347,8 +344,6 @@ func variableToken(name string) int {
     return ORDERPARM
   case "sorting":
     return SORTPARM
-  case "aifilter":
-    return AIPARM
   case "path":
     return PATHPARM
   }
@@ -476,7 +471,7 @@ func looksLikeWallpaperID(token string) bool {
 // isKnownVariable reports whether name is one of the settable variables.
 func isKnownVariable(name string) bool {
   switch name {
-  case "resolution", "purity", "kind", "query", "color", "order", "sorting", "aifilter", "path":
+  case "resolution", "purity", "kind", "query", "color", "order", "sorting", "path":
     return true
   }
   return false
@@ -555,11 +550,6 @@ func validateValue(name, value string) (bool, string) {
     return validOneOf(value, validSortings, name)
   case "order":
     return validOneOf(value, validOrders, name)
-  case "aifilter":
-    if value == "true" || value == "false" {
-      return true, ""
-    }
-    return false, fmt.Sprintf("invalid value %s for aifilter. Valid values: true, false.", value)
   case "query", "path":
     return true, ""
   default:
@@ -685,12 +675,6 @@ func updateParameters(paramName string, paramStore *common.QueryParameters, lx *
     paramStore.Order = value
   case "sorting":
     paramStore.Sorting = value
-  case "aifilter":
-    if lx.options["aifilter"] == "true" {
-      paramStore.AiArt = true
-    } else {
-      paramStore.AiArt = false
-    }
   case "path":
     paramStore.Path = value
   }
@@ -719,7 +703,6 @@ Settable variables (usage: <variable> = <value>  or  <variable>=<value>, e.g. pu
   color             color filter: 6-digit hex codes and/or names (e.g. red,0066cc)
   sorting           date_added | relevance | random | views | favorites | toplist
   order             desc | asc (only applies to date_added, views, favorites)
-  aifilter          true | false - exclude AI-generated content
   path              directory where wallpapers are downloaded
 
 Notes:

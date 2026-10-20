@@ -110,7 +110,6 @@ var (
 			CommandParameters.Kind, _ = cmd.Flags().GetString("kind")
 			CommandParameters.Query, _ = cmd.Flags().GetString("query")
 			CommandParameters.Color, _ = cmd.Flags().GetString("color")
-			CommandParameters.AiArt, _ = cmd.Flags().GetBool("aifilter")
 			CommandParameters.Page = 1
 
 			CommandParameters.Id, err = api.RandomWallpaper(CommandParameters)
@@ -146,7 +145,6 @@ var (
 			CommandParameters.Color, _ = cmd.Flags().GetString("color")
 			CommandParameters.Order, _ = cmd.Flags().GetString("order")
 			CommandParameters.Sorting, _ = cmd.Flags().GetString("sorting")
-			CommandParameters.AiArt, _ = cmd.Flags().GetBool("aifilter")
 			CommandParameters.Path = "./"
 			CommandParameters.Page = 1
 
@@ -180,11 +178,6 @@ var (
 			cliLexer.options["color"] = CommandParameters.Color
 			cliLexer.options["order"] = CommandParameters.Order
 			cliLexer.options["sorting"] = CommandParameters.Sorting
-			if CommandParameters.AiArt {
-				cliLexer.options["aifilter"] = "true"
-			} else {
-				cliLexer.options["aifilter"] = "false"
-			}
 			cliLexer.options["path"] = CommandParameters.Path
 			vP.SetPrompt(text.FgGreen.Sprintf("%s", "WHCLI > "))
 			for {
@@ -284,7 +277,6 @@ func init() {
 	rndCommand.Flags().StringP("kind", "k", "111", "Wallpaper Kind: String value made up of 3 integers: xxx where x can be either 0 or 1 (anime/nature/people)")
 	rndCommand.Flags().StringP("query", "q", "", "Specify wallpaper search query, eg: +anime +summer")
 	rndCommand.Flags().StringP("color", "c", "", "Search by wallpaper color")
-	rndCommand.Flags().BoolP("aifilter", "a", true, "Filter out AI-generated content.")
 
 	// search command params
 	searchCommand.Flags().StringP("resolution", "r", "1920x1080", "Wallpaper resolution")
@@ -294,7 +286,6 @@ func init() {
 	searchCommand.Flags().StringP("color", "c", "", "Search by wallpaper color")
 	searchCommand.Flags().StringP("sorting", "s", "", "Sorting Logic")
 	searchCommand.Flags().StringP("order", "o", "", "Results ordering logic")
-	searchCommand.Flags().BoolP("aifilter", "a", true, "Filter out AI-generated content.")
 
 	rootCommand.AddCommand(infoCommand)
 	rootCommand.AddCommand(tagInfoCommand)
