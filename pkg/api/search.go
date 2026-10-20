@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/url"
 
-	"codeberg.org/mcaimi/go-whcli/pkg/common"
+	"github.com/mcaimi/go-whcli/pkg/common"
 )
 
 // doRequest is a shared HTTP request helper: executes DoGet, reads body, unmarshals into result.

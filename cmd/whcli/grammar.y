@@ -5,8 +5,8 @@ import (
         "os"
         "fmt"
         "unicode"
-        "codeberg.org/mcaimi/go-whcli/pkg/api"
-        "codeberg.org/mcaimi/go-whcli/pkg/common"
+        "github.com/mcaimi/go-whcli/pkg/api"
+        "github.com/mcaimi/go-whcli/pkg/common"
 )
 %}
 
