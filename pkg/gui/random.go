@@ -12,10 +12,10 @@ import (
 
 // NewRandomFAB builds a floating round button that fetches a random
 // wallpaper using the current filter values in state (mirroring the CLI's
-// "random" command) and opens the detail dialog on success. Unlike the
-// CLI, it does not auto-download: the user explicitly clicks Download from
-// the detail view.
-func NewRandomFAB(w fyne.Window, state *AppState, loader *ThumbLoader, setStatus func(string)) fyne.CanvasObject {
+// "random" command) and shows it in the detail panel on success. Unlike
+// the CLI, it does not auto-download: the user explicitly clicks Download
+// from the detail panel.
+func NewRandomFAB(state *AppState, detailPanel *DetailPanel, setStatus func(string)) fyne.CanvasObject {
 	var button *fabButton
 	button = newFabButton(theme.ViewRefreshIcon(), func() {
 		params := state.Params()
@@ -40,7 +40,7 @@ func NewRandomFAB(w fyne.Window, state *AppState, loader *ThumbLoader, setStatus
 					return
 				}
 				setStatus("")
-				ShowWallpaperDetail(w, info, loader)
+				detailPanel.Show(info)
 			})
 		}()
 	})

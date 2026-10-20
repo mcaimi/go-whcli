@@ -18,8 +18,12 @@ const progressUpdateInterval = 100 * time.Millisecond
 
 // startDownload runs the wallpaper download in the background, updating
 // progressBar/statusLabel on the UI goroutine, and disables downloadButton
-// while the transfer is in flight.
-func startDownload(id, destDir string, downloadButton *widget.Button, progressBar *widget.ProgressBar, statusLabel *widget.Label) {
+// while the transfer is in flight. stillValid (may be nil) is checked
+// before every UI mutation that happens asynchronously after the download
+// starts, so that a caller whose widgets are shared across selections (like
+// DetailPanel) can suppress stale updates after the user has moved on to a
+// different item — the download itself still runs to completion either way.
+func startDownload(id, destDir string, downloadButton *widget.Button, progressBar *widget.ProgressBar, statusLabel *widget.Label, stillValid func() bool) {
 	downloadButton.Disable()
 	progressBar.SetValue(0)
 	progressBar.Show()
@@ -40,16 +44,29 @@ func startDownload(id, destDir string, downloadButton *widget.Button, progressBa
 					return
 				}
 				value := float64(transferred) / float64(total)
-				fyne.Do(func() { progressBar.SetValue(value) })
+				fyne.Do(func() {
+					if stillValid != nil && !stillValid() {
+						return
+					}
+					progressBar.SetValue(value)
+				})
 			},
 			func(msg string) {
 				if msg == "" {
 					return
 				}
-				fyne.Do(func() { statusLabel.SetText(msg) })
+				fyne.Do(func() {
+					if stillValid != nil && !stillValid() {
+						return
+					}
+					statusLabel.SetText(msg)
+				})
 			},
 		)
 		fyne.Do(func() {
+			if stillValid != nil && !stillValid() {
+				return
+			}
 			downloadButton.Enable()
 			if err != nil {
 				progressBar.Hide()

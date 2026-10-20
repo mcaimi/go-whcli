@@ -5,7 +5,7 @@ endif
 
 export PATH := $(GOBIN):$(PATH)
 
-all: whcli
+all: whcli build-gui
 
 whcli: goyacc
 	go generate

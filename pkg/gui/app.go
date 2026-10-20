@@ -5,6 +5,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -25,6 +26,7 @@ func Run() {
 
 	state := NewAppState()
 	thumbLoader := NewThumbLoader(NewThumbCache())
+	detailPanel := NewDetailPanel(w, thumbLoader)
 
 	statusLabel := widget.NewLabel("")
 	statusLabel.Wrapping = fyne.TextWrapWord
@@ -45,7 +47,7 @@ func Run() {
 
 	resultsGrid := NewResultsGrid(state, thumbLoader,
 		func(item common.SearchItem) {
-			openWallpaperByID(w, thumbLoader, item.ID, setStatus)
+			openWallpaperByID(detailPanel, item.ID, setStatus)
 		},
 		func(err error) {
 			setStatus(fmt.Sprintf("Pagination failed: %s", api.ApiErrorMessage("search page", "", err)))
@@ -79,17 +81,48 @@ func Run() {
 
 	w.SetMainMenu(fyne.NewMainMenu(
 		fyne.NewMenu("File",
-			fyne.NewMenuItem("Open by ID...", func() { ShowOpenByIDDialog(w, thumbLoader, setStatus) }),
+			fyne.NewMenuItem("Open by ID...", func() { ShowOpenByIDDialog(w, detailPanel, setStatus) }),
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Settings...", func() { ShowSettingsDialog(w, a) }),
 		),
 	))
 
 	top := container.NewVBox(searchPanel, statusLabel)
-	mainContent := container.NewBorder(top, nil, nil, nil, resultsGrid.Content())
+	gridArea := container.NewBorder(top, nil, nil, nil, resultsGrid.Content())
 
-	randomFAB := NewRandomFAB(w, state, thumbLoader, setStatus)
-	w.SetContent(newBottomRightOverlay(mainContent, randomFAB, searchFAB))
+	randomFAB := NewRandomFAB(state, detailPanel, setStatus)
+	// Anchor the floating buttons to the grid area only, so they sit flush
+	// with the divider against the detail panel instead of floating over it.
+	gridWithFABs := newBottomRightOverlay(gridArea, randomFAB, searchFAB)
+
+	splitLayout := &detailSplitLayout{}
+	content := container.New(splitLayout, gridWithFABs, detailPanel.Content())
+
+	var currentAnim *fyne.Animation
+	detailPanel.SetOnVisibilityChange(func(visible bool) {
+		if currentAnim != nil {
+			currentAnim.Stop()
+		}
+		start := splitLayout.shownFraction
+		stop := float32(0)
+		if visible {
+			stop = 1
+			splitLayout.panelWidth = detailPanel.Content().MinSize().Width
+		}
+		currentAnim = canvas.NewPositionAnimation(
+			fyne.NewPos(start, 0), fyne.NewPos(stop, 0),
+			canvas.DurationStandard,
+			func(pos fyne.Position) {
+				splitLayout.shownFraction = pos.X
+				content.Refresh()
+				if !visible && pos.X <= 0.001 {
+					detailPanel.FinishHide()
+				}
+			},
+		)
+		currentAnim.Start()
+	})
+	w.SetContent(content)
 
 	loadStartupWallpapers(a, state, resultsGrid, setStatus)
 
@@ -124,9 +157,9 @@ func loadStartupWallpapers(a fyne.App, state *AppState, grid *ResultsGrid, setSt
 	}()
 }
 
-// openWallpaperByID fetches full wallpaper info by ID and opens the detail
-// dialog on success, or reports the failure via setStatus.
-func openWallpaperByID(w fyne.Window, loader *ThumbLoader, id string, setStatus func(string)) {
+// openWallpaperByID fetches full wallpaper info by ID and shows it in
+// detailPanel on success, or reports the failure via setStatus.
+func openWallpaperByID(detailPanel *DetailPanel, id string, setStatus func(string)) {
 	setStatus(fmt.Sprintf("Loading wallpaper %s...", id))
 	go func() {
 		info, err := api.GetById(common.QueryParameters{Id: id})
@@ -136,7 +169,7 @@ func openWallpaperByID(w fyne.Window, loader *ThumbLoader, id string, setStatus 
 				return
 			}
 			setStatus("")
-			ShowWallpaperDetail(w, info, loader)
+			detailPanel.Show(info)
 		})
 	}()
 }

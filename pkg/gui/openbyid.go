@@ -10,7 +10,7 @@ var openByIDDialogSize = fyne.NewSize(360, 160)
 
 // ShowOpenByIDDialog opens a small dialog to look up a wallpaper directly
 // by ID (parity with the CLI's "info" command), reachable from the File menu.
-func ShowOpenByIDDialog(w fyne.Window, loader *ThumbLoader, setStatus func(string)) {
+func ShowOpenByIDDialog(w fyne.Window, detailPanel *DetailPanel, setStatus func(string)) {
 	idEntry := widget.NewEntry()
 	idEntry.SetPlaceHolder("Wallpaper ID")
 
@@ -21,12 +21,12 @@ func ShowOpenByIDDialog(w fyne.Window, loader *ThumbLoader, setStatus func(strin
 		if !open || idEntry.Text == "" {
 			return
 		}
-		openWallpaperByID(w, loader, idEntry.Text, setStatus)
+		openWallpaperByID(detailPanel, idEntry.Text, setStatus)
 	}, w)
 	idEntry.OnSubmitted = func(string) {
 		d.Hide()
 		if idEntry.Text != "" {
-			openWallpaperByID(w, loader, idEntry.Text, setStatus)
+			openWallpaperByID(detailPanel, idEntry.Text, setStatus)
 		}
 	}
 	d.Resize(openByIDDialogSize)

@@ -13,7 +13,40 @@ import (
 	"github.com/mcaimi/go-whcli/pkg/common"
 )
 
-var filtersPopUpWidth float32 = 280
+var filtersPopUpWidth float32 = 380
+
+// kindLabels and purityLabels name the 3 bit positions of the CLI's "Kind"
+// and "Purity" bitfield flags (cmd/whcli/cli.go), in order.
+var (
+	kindLabels   = [3]string{"Anime", "Nature", "People"}
+	purityLabels = [3]string{"SFW", "Sketchy", "NSFW"}
+)
+
+// bitsToOptions converts a 3-character "xxx" bitfield string (e.g. "111")
+// into the labels whose bit is set.
+func bitsToOptions(bits string, labels [3]string) []string {
+	selected := make([]string, 0, len(labels))
+	for i, label := range labels {
+		if i < len(bits) && bits[i] == '1' {
+			selected = append(selected, label)
+		}
+	}
+	return selected
+}
+
+// optionsToBits is the inverse of bitsToOptions: it builds a 3-character
+// "xxx" bitfield string with a '1' for each selected label.
+func optionsToBits(selected []string, labels [3]string) string {
+	bits := [3]byte{'0', '0', '0'}
+	for _, s := range selected {
+		for i, label := range labels {
+			if s == label {
+				bits[i] = '1'
+			}
+		}
+	}
+	return string(bits[:])
+}
 
 // SearchResultHandler is invoked (already on the Fyne UI goroutine, via
 // fyne.Do) when a search request completes, successfully or not.
@@ -35,28 +68,36 @@ func NewSearchPanel(w fyne.Window, state *AppState, onSearch SearchResultHandler
 	resolutionEntry := widget.NewEntry()
 	resolutionEntry.SetText(defaults.Resolution)
 
-	purityEntry := widget.NewEntry()
-	purityEntry.SetText(defaults.Purity)
+	purityCheck := widget.NewCheckGroup(purityLabels[:], nil)
+	purityCheck.Horizontal = true
+	purityCheck.SetSelected(bitsToOptions(defaults.Purity, purityLabels))
 
-	kindEntry := widget.NewEntry()
-	kindEntry.SetText(defaults.Kind)
+	kindCheck := widget.NewCheckGroup(kindLabels[:], nil)
+	kindCheck.Horizontal = true
+	kindCheck.SetSelected(bitsToOptions(defaults.Kind, kindLabels))
 
 	colorEntry := widget.NewEntry()
 	colorEntry.SetPlaceHolder("e.g. 660000")
 
-	orderEntry := widget.NewEntry()
-	orderEntry.SetPlaceHolder("asc, desc")
+	orderSelect := widget.NewSelect([]string{"asc", "desc"}, nil)
+	orderSelect.PlaceHolder = "(default)"
+	if defaults.Order != "" {
+		orderSelect.SetSelected(defaults.Order)
+	}
 
-	sortingEntry := widget.NewEntry()
-	sortingEntry.SetPlaceHolder("date_added, relevance, random, views, favorites, toplist")
+	sortingSelect := widget.NewSelect([]string{"date_added", "relevance", "random", "views", "favorites", "toplist"}, nil)
+	sortingSelect.PlaceHolder = "(default)"
+	if defaults.Sorting != "" {
+		sortingSelect.SetSelected(defaults.Sorting)
+	}
 
 	filters := container.New(layout.NewFormLayout(),
 		widget.NewLabel("Resolution"), resolutionEntry,
-		widget.NewLabel("Purity"), purityEntry,
-		widget.NewLabel("Kind"), kindEntry,
+		widget.NewLabel("Purity"), purityCheck,
+		widget.NewLabel("Kind"), kindCheck,
 		widget.NewLabel("Color"), colorEntry,
-		widget.NewLabel("Order"), orderEntry,
-		widget.NewLabel("Sorting"), sortingEntry,
+		widget.NewLabel("Order"), orderSelect,
+		widget.NewLabel("Sorting"), sortingSelect,
 	)
 	filtersBox := container.NewPadded(filters)
 	filtersBox.Resize(fyne.NewSize(filtersPopUpWidth, filtersBox.MinSize().Height))
@@ -65,11 +106,11 @@ func NewSearchPanel(w fyne.Window, state *AppState, onSearch SearchResultHandler
 		params := state.Params()
 		params.Query = queryEntry.Text
 		params.Resolution = resolutionEntry.Text
-		params.Purity = purityEntry.Text
-		params.Kind = kindEntry.Text
+		params.Purity = optionsToBits(purityCheck.Selected, purityLabels)
+		params.Kind = optionsToBits(kindCheck.Selected, kindLabels)
 		params.Color = colorEntry.Text
-		params.Order = orderEntry.Text
-		params.Sorting = sortingEntry.Text
+		params.Order = orderSelect.Selected
+		params.Sorting = sortingSelect.Selected
 		params.Page = 1
 
 		if setBusy != nil {
@@ -92,21 +133,25 @@ func NewSearchPanel(w fyne.Window, state *AppState, onSearch SearchResultHandler
 	queryEntry.OnSubmitted = func(string) { submit() }
 
 	filtersPopUp := widget.NewPopUp(filtersBox, w.Canvas())
-	queryEntry.ActionItem = newTappableIcon(theme.MenuDropDownIcon(), func() {
+	filtersButton := widget.NewButtonWithIcon("Advanced", theme.MenuDropDownIcon(), func() {})
+	filtersButton.Importance = widget.LowImportance
+	filtersButton.IconPlacement = widget.ButtonIconTrailingText
+	filtersButton.OnTapped = func() {
 		if filtersPopUp.Visible() {
 			filtersPopUp.Hide()
 			return
 		}
 		filtersPopUp.Resize(fyne.NewSize(filtersPopUpWidth, filtersBox.MinSize().Height))
 
-		// Align the popup's right edge with the window's right edge,
-		// directly under the search box, instead of under the chevron.
-		entryPos := fyne.CurrentApp().Driver().AbsolutePositionForObject(queryEntry)
-		canvasWidth := w.Canvas().Size().Width
-		x := canvasWidth - filtersPopUpWidth
-		y := entryPos.Y + queryEntry.Size().Height
-		filtersPopUp.ShowAtPosition(fyne.NewPos(x, y))
-	})
+		// Anchor to the button itself, like widget.PopUpMenu does via
+		// ShowAtRelativePosition, rather than computing an absolute
+		// position by hand. The X offset keeps the popup's right edge
+		// flush with the button's right edge (which sits at the far
+		// right of the search bar), so it still reads as right-aligned.
+		rel := fyne.NewPos(filtersButton.Size().Width-filtersPopUpWidth, filtersButton.Size().Height)
+		filtersPopUp.ShowAtRelativePosition(rel, filtersButton)
+	}
+	queryEntry.ActionItem = filtersButton
 
 	return queryEntry, submit
 }
