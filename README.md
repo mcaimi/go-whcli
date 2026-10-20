@@ -89,7 +89,7 @@ The codebase is organized into three layers:
 │    Query, Color,     │
 │    Sorting, Order,   │
 │    Id, Path, Page,   │
-│    Seed, AiArt       │
+│    Seed              │
 └──────────────────────┘
 
 ┌──────────────────────┐
@@ -252,7 +252,6 @@ values are rejected with a message (nothing is applied):
 | `color` | 6-digit hex codes and/or palette names, e.g. `red,0066cc` |
 | `sorting` | `date_added`, `relevance`, `random`, `views`, `favorites`, `toplist` |
 | `order` | `desc`, `asc` |
-| `aifilter` | `true`, `false` |
 | `path` | any non-empty path |
 
 To clear `query`, `color`, `sorting` or `order`, assign an empty value: `query =`.
