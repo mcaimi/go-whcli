@@ -1,4 +1,4 @@
-module codeberg.org/mcaimi/go-whcli
+module github.com/mcaimi/go-whcli
 
 go 1.25.5
 
