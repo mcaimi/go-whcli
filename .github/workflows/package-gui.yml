@@ -36,11 +36,18 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols
 
       - name: Install MinGW (Windows cgo toolchain)
         if: matrix.platform == 'windows'
         uses: egor-tensin/setup-mingw@v2
+        with:
+          # The action's static-linking workaround (default) deletes
+          # libpthread.dll.a/libwinpthread.dll.a, which recent mingw-builds
+          # releases no longer ship at that path; we don't need static
+          # linking for cgo, so disable it.
+          static: 0
 
       - name: Install goyacc
         run: go install golang.org/x/tools/cmd/goyacc@latest
