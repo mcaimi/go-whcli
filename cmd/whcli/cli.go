@@ -1,10 +1,8 @@
 package whcli
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -50,7 +48,7 @@ var (
 
 			info, err := api.GetById(CommandParameters)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("wallpaper", CommandParameters.Id, err))
+				fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("wallpaper", CommandParameters.Id, err))
 				os.Exit(1)
 			}
 			api.DisplayWallpaperInfo(info)
@@ -69,7 +67,7 @@ var (
 
 			tag, err := api.GetTagById(CommandParameters)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("tag", CommandParameters.Id, err))
+				fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("tag", CommandParameters.Id, err))
 				os.Exit(1)
 			}
 			api.DisplayTagInfo(tag)
@@ -88,7 +86,7 @@ var (
 			CommandParameters.Path, _ = cmd.Flags().GetString("path")
 
 			if err := api.DownloadWallpaper(CommandParameters); err != nil {
-				fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("download of wallpaper", CommandParameters.Id, err))
+				fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("download of wallpaper", CommandParameters.Id, err))
 				os.Exit(1)
 			}
 
@@ -114,17 +112,17 @@ var (
 
 			CommandParameters.Id, err = api.RandomWallpaper(CommandParameters)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("random wallpaper search", "", err))
+				fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("random wallpaper search", "", err))
 				os.Exit(1)
 			}
 			info, err := api.GetById(CommandParameters)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("wallpaper", CommandParameters.Id, err))
+				fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("wallpaper", CommandParameters.Id, err))
 				os.Exit(1)
 			}
 			api.DisplayWallpaperInfo(info)
 			if err := api.DownloadWallpaper(CommandParameters); err != nil {
-				fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("download of wallpaper", CommandParameters.Id, err))
+				fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("download of wallpaper", CommandParameters.Id, err))
 				os.Exit(1)
 			}
 
@@ -151,7 +149,7 @@ var (
 			// search and update params
 			resp, err := api.Search(CommandParameters)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("search", "", err))
+				fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("search", "", err))
 				os.Exit(1)
 			}
 			GenericSearchResults = resp
@@ -220,19 +218,6 @@ func runShellLine(lx *lexer, line string) {
 	} else {
 		pendingAction = nil
 	}
-}
-
-// apiErrorMessage turns an api package error into a user-friendly message,
-// rephrasing HTTP status codes (e.g. 404 -> "not found").
-func apiErrorMessage(what, id string, err error) string {
-	var hErr *api.HTTPError
-	if errors.As(err, &hErr) && hErr.Status == http.StatusNotFound && id != "" {
-		return fmt.Sprintf("%s '%s' not found (HTTP 404)", what, id)
-	}
-	if id != "" {
-		return fmt.Sprintf("failed to %s '%s': %s", what, id, err)
-	}
-	return fmt.Sprintf("failed to %s: %s", what, err)
 }
 
 func parseTimeouts(cmd *cobra.Command) {

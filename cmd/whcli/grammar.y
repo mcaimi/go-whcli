@@ -357,7 +357,7 @@ func variableToken(name string) int {
 func doInteractiveSearch() {
   resp, err := api.Search(CommandParameters)
   if err != nil {
-    fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("search", "", err))
+    fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("search", "", err))
     return
   }
   GenericSearchResults = resp
@@ -374,7 +374,7 @@ func doInteractiveNext() {
   CommandParameters.Page += 1
   resp, err := api.Search(CommandParameters)
   if err != nil {
-    fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("next page request", "", err))
+    fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("next page request", "", err))
     return
   }
   GenericSearchResults = resp
@@ -389,7 +389,7 @@ func doInteractivePrev() {
   }
   resp, err := api.Search(CommandParameters)
   if err != nil {
-    fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("previous page request", "", err))
+    fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("previous page request", "", err))
     return
   }
   GenericSearchResults = resp
@@ -401,7 +401,7 @@ func doInteractiveWallpaperInfo(id string) {
   CommandParameters.Id = id
   info, err := api.GetById(CommandParameters)
   if err != nil {
-    fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("wallpaper", id, err))
+    fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("wallpaper", id, err))
     return
   }
   api.DisplayWallpaperInfo(info)
@@ -410,7 +410,7 @@ func doInteractiveWallpaperInfo(id string) {
 func doInteractiveDownload(id string) {
   CommandParameters.Id = id
   if err := api.DownloadWallpaper(CommandParameters); err != nil {
-    fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("download of wallpaper", id, err))
+    fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("download of wallpaper", id, err))
   }
 }
 
@@ -418,7 +418,7 @@ func doInteractiveTagInfo(id string) {
   CommandParameters.Id = id
   tag, err := api.GetTagById(CommandParameters)
   if err != nil {
-    fmt.Fprintf(os.Stderr, "whcli: %s\n", apiErrorMessage("tag", id, err))
+    fmt.Fprintf(os.Stderr, "whcli: %s\n", api.ApiErrorMessage("tag", id, err))
     return
   }
   api.DisplayTagInfo(tag)

@@ -1,0 +1,13 @@
+Website = "https://github.com/mcaimi/go-whcli"
+
+[Details]
+Icon = "../../icon.png"
+Name = "Wallpapers"
+ID = "io.github.mcaimi.whcli-gui"
+Version = "1.0.0"
+Build = 1
+
+[LinuxAndBSD]
+GenericName = "Wallpapers"
+Categories = ["Graphics"]
+Comment = "Browse and download wallpapers from wallhaven.cc"

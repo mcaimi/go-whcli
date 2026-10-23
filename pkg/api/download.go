@@ -12,26 +12,39 @@ import (
 	"github.com/mcaimi/go-whcli/pkg/common"
 )
 
-// DownloadWallpaper downloads the wallpaper identified by parms.Id into
-// parms.Path. It returns a descriptive error instead of exiting, so that
-// callers (the interactive shell) can stay alive.
-func DownloadWallpaper(parms common.QueryParameters) error {
+// ProgressFunc is invoked as a wallpaper download progresses, with the
+// destination path (known before the download starts), cumulative bytes
+// transferred, and total content length (0 if unknown/not sent by the
+// server). May be nil.
+type ProgressFunc func(destFile string, transferred, total int64)
+
+// StatusFunc is invoked for human-readable narration events that are not
+// byte-level progress (e.g. the cross-device-link fallback notice). May be
+// nil.
+type StatusFunc func(message string)
+
+// DownloadWallpaperWithProgress downloads the wallpaper identified by
+// parms.Id into parms.Path, reporting progress/status via the supplied
+// callbacks instead of printing to stdout, and returns the final
+// destination path on success. It is the shared core behind both
+// DownloadWallpaper (CLI) and the GUI's download flow.
+func DownloadWallpaperWithProgress(parms common.QueryParameters, onProgress ProgressFunc, onStatus StatusFunc) (string, error) {
 	var err error
 	var downloadResponse *http.Response
 	var infoObject common.WallpaperInfoResponse
 	// query wallhaven for information about the requested wp ID
 	infoObject, err = GetById(parms)
 	if err != nil {
-		return fmt.Errorf("failed to fetch wallpaper %s: %w", parms.Id, err)
+		return "", fmt.Errorf("failed to fetch wallpaper %s: %w", parms.Id, err)
 	}
 	if infoObject.Data.ID == "" {
-		return fmt.Errorf("wallpaper %s not found", parms.Id)
+		return "", fmt.Errorf("wallpaper %s not found", parms.Id)
 	}
 
 	// open a temp file
 	var tempFile *os.File
 	if tempFile, err = os.CreateTemp("", fmt.Sprintf("%s-", parms.Id)); err != nil {
-		return fmt.Errorf("failed to create temporary file: %w", err)
+		return "", fmt.Errorf("failed to create temporary file: %w", err)
 	}
 	defer tempFile.Close()
 	defer func() {
@@ -42,14 +55,14 @@ func DownloadWallpaper(parms common.QueryParameters) error {
 
 	// download URL
 	if downloadResponse, err = DoGetDownload(infoObject.Data.Path); err != nil {
-		return fmt.Errorf("download from %s failed: %w", infoObject.Data.Path, err)
+		return "", fmt.Errorf("download from %s failed: %w", infoObject.Data.Path, err)
 	}
 	defer downloadResponse.Body.Close()
 
 	// prepare destination path
 	// make directory
 	if err = os.MkdirAll(parms.Path, 0o700); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", parms.Path, err)
+		return "", fmt.Errorf("failed to create directory %s: %w", parms.Path, err)
 	}
 	destFile := path.Join(parms.Path, path.Base(infoObject.Data.Path))
 
@@ -90,18 +103,16 @@ func DownloadWallpaper(parms common.QueryParameters) error {
 			break
 		}
 		accumulator += transferred
-		var sizeStr string
-		if downloadResponse.ContentLength > 0 {
-			sizeStr = text.FgGreen.Sprintf("%d", downloadResponse.ContentLength)
-		} else {
-			sizeStr = "?"
+		if onProgress != nil {
+			onProgress(destFile, int64(accumulator), downloadResponse.ContentLength)
 		}
-		fmt.Printf("Downloading file <%s> - [%s/%s] Bytes Received.\r", text.FgRed.Sprintf("%s", destFile), text.FgYellow.Sprintf("%d", accumulator), sizeStr)
 	}
-	fmt.Println()
+	if onStatus != nil {
+		onStatus("")
+	}
 
 	if writeFailed {
-		return fmt.Errorf("error writing %s to disk", destFile)
+		return "", fmt.Errorf("error writing %s to disk", destFile)
 	}
 
 	// move file to destination
@@ -117,33 +128,63 @@ func DownloadWallpaper(parms common.QueryParameters) error {
 
 		// is error code 18?
 		if errID == 18 {
-			fmt.Printf("Recover: %s\n", "Cannot move, Cross-Link error detected: trying to copy data instead...")
+			if onStatus != nil {
+				onStatus("Recover: Cannot move, Cross-Link error detected: trying to copy data instead...")
+			}
 			// copy instead of moving
 			srcFile, err := os.Open(tempFile.Name())
 			if err != nil {
-				return fmt.Errorf("fatal error: %s", err)
+				return "", fmt.Errorf("fatal error: %s", err)
 			}
 			defer srcFile.Close()
 			dstFile, err := os.Create(destFile)
 			if err != nil {
-				return fmt.Errorf("fatal error: %s", err)
+				return "", fmt.Errorf("fatal error: %s", err)
 			}
 			defer dstFile.Close()
 
 			// copy data
 			bytesCopied, err := io.Copy(dstFile, srcFile)
 			if err != nil {
-				return fmt.Errorf("fatal error: %s", err)
+				return "", fmt.Errorf("fatal error: %s", err)
 			}
 
-			fmt.Printf("[%d] Bytes Copied, Syncing...\n", bytesCopied)
+			if onStatus != nil {
+				onStatus(fmt.Sprintf("[%d] Bytes Copied, Syncing...", bytesCopied))
+			}
 			if err := dstFile.Sync(); err != nil {
-				return fmt.Errorf("fatal error: %s", err)
+				return "", fmt.Errorf("fatal error: %s", err)
 			}
 
 		} else {
-			return fmt.Errorf("failed to move file to %s: %s", destFile, err)
+			return "", fmt.Errorf("failed to move file to %s: %s", destFile, err)
 		}
+	}
+
+	return destFile, nil
+}
+
+// DownloadWallpaper downloads the wallpaper identified by parms.Id into
+// parms.Path, printing progress to stdout exactly as before. It returns a
+// descriptive error instead of exiting, so that callers (the interactive
+// shell) can stay alive.
+func DownloadWallpaper(parms common.QueryParameters) error {
+	destFile, err := DownloadWallpaperWithProgress(parms,
+		func(destFile string, transferred, total int64) {
+			var sizeStr string
+			if total > 0 {
+				sizeStr = text.FgGreen.Sprintf("%d", total)
+			} else {
+				sizeStr = "?"
+			}
+			fmt.Printf("Downloading file <%s> - [%s/%s] Bytes Received.\r", text.FgRed.Sprintf("%s", destFile), text.FgYellow.Sprintf("%d", transferred), sizeStr)
+		},
+		func(msg string) {
+			fmt.Println(msg)
+		},
+	)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("whcli: saved to %s\n", destFile)

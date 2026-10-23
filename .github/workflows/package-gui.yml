@@ -1,0 +1,70 @@
+name: Package GUI
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            artifact-glob: "cmd/whcli-gui/*.tar.gz"
+          - os: windows-latest
+            platform: windows
+            artifact-glob: "cmd/whcli-gui/*.exe"
+          - os: macos-14
+            platform: darwin
+            artifact-glob: "cmd/whcli-gui/*.app"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Linux GUI build dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgl1-mesa-dev xorg-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols
+
+      - name: Install MinGW (Windows cgo toolchain)
+        if: matrix.platform == 'windows'
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          # The action's static-linking workaround (default) deletes
+          # libpthread.dll.a/libwinpthread.dll.a, which recent mingw-builds
+          # releases no longer ship at that path; we don't need static
+          # linking for cgo, so disable it.
+          static: 0
+
+      - name: Install goyacc
+        run: go install golang.org/x/tools/cmd/goyacc@latest
+
+      - name: Install fyne packaging tool
+        run: go install fyne.io/tools/cmd/fyne@latest
+
+      - name: Generate grammar
+        run: go generate
+
+      - name: Package GUI application
+        working-directory: cmd/whcli-gui
+        run: fyne package -os ${{ matrix.platform }} -release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: whcli-gui-${{ matrix.platform }}
+          path: ${{ matrix.artifact-glob }}
+          if-no-files-found: error
