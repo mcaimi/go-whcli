@@ -21,7 +21,7 @@ func Run() {
 	a := app.NewWithID(appID)
 	ApplySavedSettings(a)
 
-	w := a.NewWindow("WHCLI - WallHaven.cc Client")
+	w := a.NewWindow("Wallpapers (powered by wallhaven.cc)")
 	w.Resize(fyne.NewSize(1000, 700))
 
 	state := NewAppState()
@@ -45,7 +45,8 @@ func Run() {
 		statusLabel.Show()
 	}
 
-	resultsGrid := NewResultsGrid(state, thumbLoader,
+	resultsGrid := NewResultsGrid(
+		state, thumbLoader,
 		func(item common.SearchItem) {
 			openWallpaperByID(detailPanel, item.ID, setStatus)
 		},
@@ -55,7 +56,8 @@ func Run() {
 	)
 
 	var searchFAB *fabButton
-	searchPanel, triggerSearch := NewSearchPanel(w, state,
+	searchPanel, triggerSearch := NewSearchPanel(
+		w, state,
 		func(resp common.SearchResponse, err error) {
 			if err != nil {
 				setStatus(fmt.Sprintf("Search failed: %s", api.ApiErrorMessage("search", "", err)))
@@ -80,7 +82,8 @@ func Run() {
 	searchFAB = newFabButton(theme.SearchIcon(), triggerSearch)
 
 	w.SetMainMenu(fyne.NewMainMenu(
-		fyne.NewMenu("File",
+		fyne.NewMenu(
+			"File",
 			fyne.NewMenuItem("Open by ID...", func() { ShowOpenByIDDialog(w, detailPanel, setStatus) }),
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Settings...", func() { ShowSettingsDialog(w, a) }),
